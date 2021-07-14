@@ -50,3 +50,27 @@ export const ProfileRelationsBoxWrapper = styled(Box)`
     }
   }
 `; 
+
+export default function ProfileRelationsBox({items, title}){
+
+  return(
+    <ProfileRelationsBoxWrapper>
+    <h2 className="smallTitle">
+      {title} ({items.length})
+    </h2>
+    {/* <ul>
+      {items.map((itemAtual) => {
+        return (
+          <li key={itemAtual.id}>
+            <a href={`/users/${itemAtual.title}`}>
+              <img src={itemAtual.image} />
+              <span>{itemAtual.title}</span>
+            </a>
+          </li>
+        )
+      })}
+    </ul> */}
+  </ProfileRelationsBoxWrapper>
+
+  );
+}
