@@ -1,8 +1,7 @@
-
 import MainGrid from '../src/components/MainGrid';
 import Box from '../src/components/Box';
 import { AlurakutMenu,OrkutNostalgicIconSet } from '../src/lib/AlurakutCommons';
-import ProfileRelationsBox from '../src/components/ProfileRelations';
+import ProfileRelationsBox, { ProfileRelationsBoxWrapper } from '../src/components/ProfileRelations';
 import ProfileSidebar from '../src/components/ProfileSideBar';
 import { useState, useEffect } from 'react';
 
@@ -11,11 +10,7 @@ import { useState, useEffect } from 'react';
 export default function Home() {
 
   const [followers, setFollowers] = useState([]);
-  const [comunidades, setComunidades] = useState([{
-    id: '12802378123789378912789789123896123', 
-    title: 'Eu odeio acordar cedo',
-    image: 'https://alurakut.vercel.app/capa-comunidade-01.jpg'
-  }]);
+  const [comunidades, setComunidades] = useState([]);
   
   const usuarioAleatorio = 'matheus-commits';
   const pessoasFavoritas = [
@@ -29,24 +24,71 @@ export default function Home() {
 
   function handleCreateCommunity(e){
     e.preventDefault();
-    const formData = new FormData();
+    const formData = new FormData(e.target);
     const comunidade = {
-      id: new Date().toISOString(),
+  
       title: formData.get('title'),
-      image: formData.get('image'),
+      imageUrl: formData.get('image'),
+      creatorSlug: usuarioAleatorio,
     }
-    const comunidadesAtualizadas = [...comunidades, comunidade];
-    setComunidades(comunidadesAtualizadas)
+
+    fetch('/api/comunities', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(comunidade)
+                })
+                .then(async (response) => {
+                  const dados = await response.json();
+                  console.log(dados.registroCriado);
+                  const comunidade = dados.registroCriado;
+                  const comunidadesAtualizadas = [...comunidades, comunidade];
+                  setComunidades(comunidadesAtualizadas)
+                })
 
   }
 
-  useEffect(()=>{
+  function getRandomUserFollowers (){
     fetch('https://api.github.com/users/peas/followers')
-                      .then((serverResponse)=>{
-                          return serverResponse.json();
-                      }).then((completeResponse)=>{
-                        setFollowers(completeResponse)
-                      })
+    .then((serverResponse)=>{
+        return serverResponse.json();
+    }).then((completeResponse)=>{
+      setFollowers(completeResponse)
+    });
+  }
+
+  function getCommunities(){
+    fetch('https://graphql.datocms.com/', {
+      method:'POST',
+      headers: {
+        'Authorization': 'd388884eee39b31283d7827ef0845f',
+        'Content-Type':'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ "query": `query{
+                                          allComunities {
+                                            id
+                                            title
+                                            imageUrl
+                                            creatorSlug
+                                          }
+                                        }
+      `})
+    }).then((response) => response.json())
+      .then((fullResponse) => {
+        
+         const comunitiesFromDato = fullResponse.data.allComunities;
+         console.log(comunitiesFromDato);
+          setComunidades(comunitiesFromDato);
+        
+        });
+  }
+
+  useEffect(()=>{
+    getRandomUserFollowers();
+    getCommunities();
+
   },[])
 
   
@@ -85,14 +127,49 @@ export default function Home() {
                   aria-label="Coloque uma URL para usarmos de capa"
                 />
               </div>
-              <button>Criar comunidade</button>
+              <button type="submit">Criar comunidade</button>
             </form>
           </Box>
         </div>
         <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
-          <ProfileRelationsBox title="Comunidades" items={comunidades} />
-          <ProfileRelationsBox title="Pessoas da comunidade" items={pessoasFavoritas} />
           <ProfileRelationsBox title="Seguidores" items={followers} />
+          <ProfileRelationsBoxWrapper>
+            <h2 className="smallTitle">
+              Comunidades ({comunidades.length})
+            </h2>
+            <ul>
+              {comunidades.map((itemAtual) => {
+                return (
+                  <li key={itemAtual.id}>
+                    <a href={`/users/${itemAtual.title}`}>
+                      <img src={itemAtual.image} />
+                    </a>
+                    <a href={`/communities/${itemAtual.id}`}>
+                      <img src={itemAtual.imageUrl} />
+                      <span>{itemAtual.title}</span>
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </ProfileRelationsBoxWrapper>
+          <ProfileRelationsBoxWrapper>
+            <h2 className="smallTitle">
+              Pessoas da comunidade ({pessoasFavoritas.length})
+            </h2>
+            <ul>
+              {pessoasFavoritas.map((itemAtual) => {
+                return (
+                  <li key={itemAtual}>
+                    <a href={`/users/${itemAtual}`}>
+                      <img src={`https://github.com/${itemAtual}.png`} />
+                      <span>{itemAtual}</span>
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </ProfileRelationsBoxWrapper>
         </div>
       </MainGrid>
     </>

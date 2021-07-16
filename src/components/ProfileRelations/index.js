@@ -55,10 +55,10 @@ export default function ProfileRelationsBox({items, title}){
 
   return(
     <ProfileRelationsBoxWrapper>
-    <h2 className="smallTitle">
+    {/* <h2 className="smallTitle">
       {title} ({items.length})
     </h2>
-    {/* <ul>
+    <ul>
       {items.map((itemAtual) => {
         return (
           <li key={itemAtual.id}>
