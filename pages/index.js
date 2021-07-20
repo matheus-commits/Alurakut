@@ -1,18 +1,20 @@
 import MainGrid from '../src/components/MainGrid';
 import Box from '../src/components/Box';
-import { AlurakutMenu,OrkutNostalgicIconSet } from '../src/lib/AlurakutCommons';
+import { AlurakutMenu, OrkutNostalgicIconSet } from '../src/lib/AlurakutCommons';
 import ProfileRelationsBox, { ProfileRelationsBoxWrapper } from '../src/components/ProfileRelations';
 import ProfileSidebar from '../src/components/ProfileSideBar';
+import nookies from 'nookies';
+import jwt from 'jsonwebtoken';
 import { useState, useEffect } from 'react';
 
 
 
-export default function Home() {
+export default function Home(props) {
 
   const [followers, setFollowers] = useState([]);
   const [comunidades, setComunidades] = useState([]);
-  
-  const usuarioAleatorio = 'matheus-commits';
+
+  const usuarioAleatorio = props.githubUser;
   const pessoasFavoritas = [
     'juunegreiros',
     'omariosouto',
@@ -22,51 +24,52 @@ export default function Home() {
     'felipefialho'
   ]
 
-  function handleCreateCommunity(e){
+  function handleCreateCommunity(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const comunidade = {
-  
+
       title: formData.get('title'),
       imageUrl: formData.get('image'),
       creatorSlug: usuarioAleatorio,
     }
 
     fetch('/api/comunities', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify(comunidade)
-                })
-                .then(async (response) => {
-                  const dados = await response.json();
-                  console.log(dados.registroCriado);
-                  const comunidade = dados.registroCriado;
-                  const comunidadesAtualizadas = [...comunidades, comunidade];
-                  setComunidades(comunidadesAtualizadas)
-                })
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(comunidade)
+    })
+      .then(async (response) => {
+        const dados = await response.json();
+        console.log(dados.registroCriado);
+        const comunidade = dados.registroCriado;
+        const comunidadesAtualizadas = [...comunidades, comunidade];
+        setComunidades(comunidadesAtualizadas)
+      })
 
   }
 
-  function getRandomUserFollowers (){
-    fetch('https://api.github.com/users/peas/followers')
-    .then((serverResponse)=>{
+  function getRandomUserFollowers() {
+    fetch(`https://api.github.com/users/${usuarioAleatorio}/followers`)
+      .then((serverResponse) => {
         return serverResponse.json();
-    }).then((completeResponse)=>{
-      setFollowers(completeResponse)
-    });
+      }).then((completeResponse) => {
+        setFollowers(completeResponse)
+      });
   }
 
-  function getCommunities(){
+  function getCommunities() {
     fetch('https://graphql.datocms.com/', {
-      method:'POST',
+      method: 'POST',
       headers: {
         'Authorization': 'd388884eee39b31283d7827ef0845f',
-        'Content-Type':'application/json',
+        'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ "query": `query{
+      body: JSON.stringify({
+        "query": `query{
                                           allComunities {
                                             id
                                             title
@@ -77,21 +80,21 @@ export default function Home() {
       `})
     }).then((response) => response.json())
       .then((fullResponse) => {
-        
-         const comunitiesFromDato = fullResponse.data.allComunities;
-         console.log(comunitiesFromDato);
-          setComunidades(comunitiesFromDato);
-        
-        });
+
+        const comunitiesFromDato = fullResponse.data.allComunities;
+        console.log(comunitiesFromDato);
+        setComunidades(comunitiesFromDato);
+
+      });
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     getRandomUserFollowers();
     getCommunities();
 
-  },[])
+  }, [])
 
-  
+
 
   return (
     <>
@@ -112,13 +115,13 @@ export default function Home() {
           <Box>
             <h2 className="subTitle">O que você deseja fazer?</h2>
             <form onSubmit={handleCreateCommunity}>
-            <div>
+              <div>
                 <input
                   placeholder="Qual vai ser o nome da sua comunidade?"
                   name="title"
                   aria-label="Qual vai ser o nome da sua comunidade?"
                   type="text"
-                  />
+                />
               </div>
               <div>
                 <input
@@ -132,7 +135,7 @@ export default function Home() {
           </Box>
         </div>
         <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
-          <ProfileRelationsBox title="Seguidores" items={followers} />
+
           <ProfileRelationsBoxWrapper>
             <h2 className="smallTitle">
               Comunidades ({comunidades.length})
@@ -169,9 +172,47 @@ export default function Home() {
                 )
               })}
             </ul>
+            <ProfileRelationsBoxWrapper>
+              <h2 className="smallTitle">
+                Sefuidores({followers.length})
+              </h2>
+              <ul>
+                {followers.slice(0,6).map((itemAtual) => {
+                  return (
+                    <li key={itemAtual}>
+                      <a href={itemAtual.html_url} target="_blank" rel="noopener noreferrer" title="Site do usuário">
+                        <img src={itemAtual.avatar_url} alt="Avatar do usuário" />
+                        <span>{itemAtual.login}</span>
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+            </ProfileRelationsBoxWrapper>
           </ProfileRelationsBoxWrapper>
         </div>
       </MainGrid>
     </>
   );
+}
+
+export async function getServerSideProps(context) {
+  const cookies = nookies.get(context);
+  const token = cookies.USER_TOKEN;
+  const decodedToken = jwt.decode(token);
+  const githubUser = decodedToken?.githubUser;
+
+  if (!githubUser) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    }
+  }
+  return {
+    props: {
+      githubUser,
+    }
+  }
 }
